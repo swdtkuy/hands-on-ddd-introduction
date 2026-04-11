@@ -7,3 +7,4 @@
 - **言語**: TypeScript 5.x（strict モード）
 - **ランタイム**: Node.js 24.x
 - **テスト**: Jest + ts-jest
+- **DB**: PostgreSQL 15（Docker Compose）
