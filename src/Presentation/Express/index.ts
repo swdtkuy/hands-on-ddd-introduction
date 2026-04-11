@@ -1,4 +1,5 @@
 import express, { json, Response } from "express";
+import path from "path";
 
 import {
   RegisterBookCommand,
@@ -24,11 +25,13 @@ import { SQLBookRepository } from "Infrastructure/SQL/Book/SQLBookRepository";
 import { SQLReviewRepository } from "Infrastructure/SQL/Review/SQLReviewRepository";
 import { SQLClientManager } from "Infrastructure/SQL/SQLClientManager";
 import { SQLTransactionManager } from "Infrastructure/SQL/SQLTransactionManager";
+import pool from "Infrastructure/SQL/db";
 
 const app = express();
 const port = 3000;
 
 app.use(json());
+app.use(express.static(path.join(__dirname, "public")));
 
 const clientManager = new SQLClientManager();
 const transactionManager = new SQLTransactionManager(clientManager);
@@ -39,6 +42,19 @@ const isStr = (v: unknown): v is string => typeof v === "string" && v.length > 0
 const isNum = (v: unknown): v is number => typeof v === "number" && !isNaN(v);
 const invalid = (res: Response) =>
   res.status(400).json({ ok: false, message: "Invalid request" });
+
+app.get("/db/state", async (_req, res) => {
+  try {
+    const booksResult = await pool.query('SELECT * FROM "Book" ORDER BY "bookId"');
+    const reviewsResult = await pool.query('SELECT * FROM "Review" ORDER BY "bookId", "reviewId"');
+    res.json({ ok: true, books: booksResult.rows, reviews: reviewsResult.rows });
+  } catch {
+    res.status(503).json({
+      ok: false,
+      message: 'DBに接続できません。docker compose up -d で起動してください。',
+    });
+  }
+});
 
 app.get("/book/:isbn/recommendations", async (req, res) => {
   try {

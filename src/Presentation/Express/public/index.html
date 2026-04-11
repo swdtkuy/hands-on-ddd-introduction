@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CatalogService API Console</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f7; color: #1d1d1f; font-size: 14px; height: 100vh; display: flex; flex-direction: column; }
+
+    header { background: #1d1d1f; color: white; padding: 12px 20px; display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+    header h1 { font-size: 16px; font-weight: 600; }
+
+    #db-banner { display: none; background: #ff3b30; color: white; padding: 10px 20px; font-size: 13px; flex-shrink: 0; }
+    #db-banner.visible { display: block; }
+    #db-banner code { background: rgba(255,255,255,0.2); padding: 1px 6px; border-radius: 4px; font-family: monospace; }
+
+    .layout { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 16px; flex: 1; min-height: 0; }
+
+    .panel { background: white; border-radius: 8px; border: 1px solid #e5e5e7; overflow: hidden; display: flex; flex-direction: column; }
+    .panel-header { padding: 12px 16px; border-bottom: 1px solid #e5e5e7; display: flex; align-items: center; justify-content: space-between; background: #fafafa; flex-shrink: 0; }
+    .panel-header h2 { font-size: 12px; font-weight: 600; color: #6e6e73; text-transform: uppercase; letter-spacing: 0.5px; }
+    .panel-body { padding: 16px; overflow-y: auto; flex: 1; }
+
+    button { cursor: pointer; border: none; border-radius: 6px; padding: 6px 12px; font-size: 13px; font-weight: 500; }
+    .btn-primary { background: #007aff; color: white; }
+    .btn-primary:hover { background: #0071e3; }
+    .btn-secondary { background: #e5e5e7; color: #1d1d1f; }
+    .btn-secondary:hover { background: #d1d1d6; }
+    .btn-send { padding: 8px 20px; font-size: 14px; width: 100%; }
+
+    /* DB State */
+    .db-section { margin-bottom: 20px; }
+    .db-section h3 { font-size: 11px; font-weight: 600; color: #6e6e73; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+    .db-table-wrap { overflow-x: auto; }
+    .db-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .db-table th { text-align: left; padding: 6px 8px; background: #f5f5f7; border-bottom: 1px solid #e5e5e7; color: #6e6e73; font-weight: 500; white-space: nowrap; }
+    .db-table td { padding: 6px 8px; border-bottom: 1px solid #f0f0f0; vertical-align: top; }
+    .db-table tr:last-child td { border-bottom: none; }
+    .id-cell { font-family: monospace; color: #007aff; cursor: pointer; white-space: nowrap; }
+    .id-cell:hover { text-decoration: underline; }
+    .truncate { max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .empty-state { text-align: center; padding: 20px; color: #aeaeb2; font-size: 13px; }
+
+    /* API Console */
+    select { width: 100%; padding: 8px 10px; border: 1px solid #d1d1d6; border-radius: 6px; font-size: 14px; background: white; margin-bottom: 16px; }
+
+    .method-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; margin-right: 6px; }
+    .GET  { background: #34c759; color: white; }
+    .POST { background: #007aff; color: white; }
+    .PUT  { background: #ff9500; color: white; }
+    .DELETE { background: #ff3b30; color: white; }
+
+    .url-preview { background: #f5f5f7; border-radius: 6px; padding: 8px 12px; font-family: monospace; font-size: 12px; color: #3c3c43; margin-bottom: 16px; word-break: break-all; display: flex; align-items: center; gap: 4px; }
+
+    .form-section { margin-bottom: 16px; }
+    .form-section-title { font-size: 11px; font-weight: 600; color: #6e6e73; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+    .form-row { margin-bottom: 10px; }
+    .form-row label { display: block; font-size: 12px; font-weight: 500; color: #3c3c43; margin-bottom: 4px; }
+    .form-row input, .form-row textarea {
+      width: 100%; padding: 7px 10px; border: 1px solid #d1d1d6; border-radius: 6px;
+      font-size: 13px; font-family: inherit;
+    }
+    .form-row input:focus, .form-row textarea:focus { outline: none; border-color: #007aff; box-shadow: 0 0 0 3px rgba(0,122,255,0.15); }
+    .form-row textarea { resize: vertical; min-height: 64px; }
+
+    .response-area { margin-top: 16px; }
+    .response-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .response-label { font-size: 11px; font-weight: 600; color: #6e6e73; text-transform: uppercase; letter-spacing: 0.5px; }
+    .response-status { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; }
+    .status-ok    { background: #d4f4e0; color: #1a7f40; }
+    .status-error { background: #fde8e7; color: #c0392b; }
+    pre.response-body {
+      background: #1d1d1f; color: #f5f5f7; padding: 12px; border-radius: 6px;
+      font-size: 12px; overflow-x: auto; white-space: pre-wrap; word-break: break-word;
+      max-height: 260px; overflow-y: auto;
+    }
+    .loading { color: #aeaeb2; font-style: italic; font-size: 13px; }
+
+    #copied-toast {
+      position: fixed; bottom: 20px; right: 20px; background: #1d1d1f; color: white;
+      padding: 8px 16px; border-radius: 6px; font-size: 13px;
+      opacity: 0; transition: opacity 0.2s; pointer-events: none;
+    }
+    #copied-toast.show { opacity: 1; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>CatalogService API Console</h1>
+    <span id="db-dot" style="width:8px;height:8px;border-radius:50%;background:#aeaeb2;display:inline-block;flex-shrink:0"></span>
+    <span id="db-status-text" style="font-size:12px;color:#aeaeb2">DB確認中...</span>
+  </header>
+
+  <div id="db-banner">
+    <strong>DBに接続できません。</strong>&nbsp;<code>docker compose up -d</code>&nbsp;で起動してください。
+  </div>
+
+  <div class="layout">
+    <!-- DB State Panel -->
+    <div class="panel">
+      <div class="panel-header">
+        <h2>DB State</h2>
+        <button class="btn-secondary" onclick="loadDbState()">Refresh</button>
+      </div>
+      <div class="panel-body" id="db-state-body">
+        <div class="loading">読み込み中...</div>
+      </div>
+    </div>
+
+    <!-- API Console Panel -->
+    <div class="panel">
+      <div class="panel-header">
+        <h2>API Console</h2>
+      </div>
+      <div class="panel-body">
+        <select id="api-select" onchange="onApiChange()">
+          <option value="">-- APIを選択 --</option>
+        </select>
+
+        <div id="api-form" style="display:none">
+          <div class="url-preview" id="url-preview"></div>
+          <div id="fields-container"></div>
+          <button class="btn-primary btn-send" onclick="sendRequest()">Send</button>
+          <div class="response-area" id="response-area" style="display:none">
+            <div class="response-header">
+              <span class="response-label">Response</span>
+              <span id="response-status"></span>
+            </div>
+            <pre class="response-body" id="response-body"></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="copied-toast">クリップボードにコピーしました</div>
+
+  <script>
+    const API_CONFIGS = [
+      {
+        id: 'register-book',
+        label: 'POST /book — 本を登録',
+        method: 'POST',
+        urlTemplate: '/book',
+        pathParams: [],
+        queryParams: [],
+        bodyFields: [
+          { name: 'isbn',   type: 'text',   default: '9784167158057', label: 'ISBN' },
+          { name: 'title',  type: 'text',   default: '吾輩は猫である', label: 'タイトル' },
+          { name: 'author', type: 'text',   default: '夏目漱石',       label: '著者' },
+          { name: 'price',  type: 'number', default: 1200,             label: '価格 (JPY)' },
+        ],
+      },
+      {
+        id: 'add-review',
+        label: 'POST /book/:isbn/review — レビューを追加',
+        method: 'POST',
+        urlTemplate: '/book/{isbn}/review',
+        pathParams: [
+          { name: 'isbn', default: '9784167158057', label: 'ISBN (path)' },
+        ],
+        queryParams: [],
+        bodyFields: [
+          { name: 'name',    type: 'text',   default: '田中太郎', label: 'レビュアー名' },
+          { name: 'rating',  type: 'number', default: 4,          label: '評価 (1〜5)' },
+          { name: 'comment', type: 'textarea', default: 'とても面白い本でした。「走れメロス」もおすすめです。', label: 'コメント' },
+        ],
+      },
+      {
+        id: 'edit-review',
+        label: 'PUT /review/:reviewId — レビューを編集',
+        method: 'PUT',
+        urlTemplate: '/review/{reviewId}',
+        pathParams: [
+          { name: 'reviewId', default: '', label: 'Review ID (path)' },
+        ],
+        queryParams: [],
+        bodyFields: [
+          { name: 'name',    type: 'text',   default: '田中太郎',               label: 'レビュアー名' },
+          { name: 'rating',  type: 'number', default: 5,                         label: '評価 (1〜5)' },
+          { name: 'comment', type: 'textarea', default: '再読してさらに良さがわかりました。', label: 'コメント' },
+        ],
+      },
+      {
+        id: 'delete-review',
+        label: 'DELETE /review/:reviewId — レビューを削除',
+        method: 'DELETE',
+        urlTemplate: '/review/{reviewId}',
+        pathParams: [
+          { name: 'reviewId', default: '', label: 'Review ID (path)' },
+        ],
+        queryParams: [],
+        bodyFields: [],
+      },
+      {
+        id: 'get-recommendations',
+        label: 'GET /book/:isbn/recommendations — おすすめ本を取得',
+        method: 'GET',
+        urlTemplate: '/book/{isbn}/recommendations',
+        pathParams: [
+          { name: 'isbn', default: '9784167158057', label: 'ISBN (path)' },
+        ],
+        queryParams: [
+          { name: 'maxCount', default: '5', label: '最大件数 (省略可)' },
+        ],
+        bodyFields: [],
+      },
+    ];
+
+    // Populate select
+    const selectEl = document.getElementById('api-select');
+    API_CONFIGS.forEach(cfg => {
+      const opt = document.createElement('option');
+      opt.value = cfg.id;
+      opt.textContent = cfg.label;
+      selectEl.appendChild(opt);
+    });
+
+    function onApiChange() {
+      const cfg = getCurrentConfig();
+      document.getElementById('api-form').style.display = cfg ? 'block' : 'none';
+      document.getElementById('response-area').style.display = 'none';
+      if (cfg) {
+        renderForm(cfg);
+        updateUrlPreview(cfg);
+      }
+    }
+
+    function renderForm(cfg) {
+      const container = document.getElementById('fields-container');
+      container.innerHTML = '';
+
+      const sections = [
+        { title: 'Path パラメータ', fields: cfg.pathParams },
+        { title: 'Query パラメータ', fields: cfg.queryParams },
+        { title: 'Request Body',    fields: cfg.bodyFields },
+      ].filter(s => s.fields.length > 0);
+
+      sections.forEach(({ title, fields }) => {
+        const sec = document.createElement('div');
+        sec.className = 'form-section';
+        sec.innerHTML = `<div class="form-section-title">${title}</div>`;
+
+        fields.forEach(field => {
+          const row = document.createElement('div');
+          row.className = 'form-row';
+          const isTextarea = field.type === 'textarea';
+          row.innerHTML = `
+            <label for="field-${field.name}">${field.label}</label>
+            ${isTextarea
+              ? `<textarea id="field-${field.name}" oninput="updateUrlPreview(null)">${esc(String(field.default ?? ''))}</textarea>`
+              : `<input id="field-${field.name}" type="${field.type || 'text'}" value="${esc(String(field.default ?? ''))}" oninput="updateUrlPreview(null)">`
+            }
+          `;
+          sec.appendChild(row);
+        });
+
+        container.appendChild(sec);
+      });
+    }
+
+    function getCurrentConfig() {
+      return API_CONFIGS.find(c => c.id === selectEl.value) || null;
+    }
+
+    function buildUrl(cfg) {
+      let url = cfg.urlTemplate;
+      cfg.pathParams.forEach(p => {
+        const val = document.getElementById(`field-${p.name}`)?.value ?? '';
+        url = url.replace(`{${p.name}}`, encodeURIComponent(val));
+      });
+      const qs = cfg.queryParams
+        .map(p => {
+          const val = document.getElementById(`field-${p.name}`)?.value ?? '';
+          return val ? `${encodeURIComponent(p.name)}=${encodeURIComponent(val)}` : '';
+        })
+        .filter(Boolean)
+        .join('&');
+      return qs ? `${url}?${qs}` : url;
+    }
+
+    function updateUrlPreview(cfg) {
+      const c = cfg || getCurrentConfig();
+      if (!c) return;
+      const url = buildUrl(c);
+      document.getElementById('url-preview').innerHTML =
+        `<span class="method-badge ${c.method}">${c.method}</span>${esc(url)}`;
+    }
+
+    async function sendRequest() {
+      const cfg = getCurrentConfig();
+      if (!cfg) return;
+
+      const url = buildUrl(cfg);
+      const options = { method: cfg.method, headers: {} };
+
+      if (cfg.bodyFields.length > 0) {
+        options.headers['Content-Type'] = 'application/json';
+        const body = {};
+        cfg.bodyFields.forEach(f => {
+          const val = document.getElementById(`field-${f.name}`)?.value;
+          body[f.name] = f.type === 'number' ? Number(val) : val;
+        });
+        options.body = JSON.stringify(body);
+      }
+
+      const responseArea = document.getElementById('response-area');
+      const statusEl    = document.getElementById('response-status');
+      const bodyEl      = document.getElementById('response-body');
+
+      responseArea.style.display = 'block';
+      statusEl.innerHTML = '<span class="loading">送信中...</span>';
+      bodyEl.textContent = '';
+
+      try {
+        const resp = await fetch(url, options);
+        const cls = resp.ok ? 'status-ok' : 'status-error';
+        statusEl.innerHTML = `<span class="response-status ${cls}">${resp.status} ${resp.statusText}</span>`;
+
+        if (resp.status === 204) {
+          bodyEl.textContent = '(No Content)';
+        } else {
+          const data = await resp.json();
+          bodyEl.textContent = JSON.stringify(data, null, 2);
+        }
+
+        if (['POST', 'PUT', 'DELETE'].includes(cfg.method)) {
+          setTimeout(loadDbState, 300);
+        }
+      } catch (err) {
+        statusEl.innerHTML = '<span class="response-status status-error">Error</span>';
+        bodyEl.textContent = err.message;
+      }
+    }
+
+    async function loadDbState() {
+      const body       = document.getElementById('db-state-body');
+      const banner     = document.getElementById('db-banner');
+      const dot        = document.getElementById('db-dot');
+      const statusText = document.getElementById('db-status-text');
+
+      try {
+        const resp = await fetch('/db/state');
+        const data = await resp.json();
+
+        if (!data.ok) {
+          setDbStatus(false, banner, dot, statusText);
+          body.innerHTML = `<div class="empty-state">${esc(data.message)}</div>`;
+          return;
+        }
+
+        setDbStatus(true, banner, dot, statusText);
+        const { books, reviews } = data;
+
+        let html = `<div class="db-section"><h3>Books (${books.length})</h3>`;
+        if (books.length === 0) {
+          html += '<div class="empty-state">データなし</div>';
+        } else {
+          html += `<div class="db-table-wrap"><table class="db-table">
+            <thead><tr><th>bookId (ISBN)</th><th>タイトル</th><th>著者</th><th>価格</th></tr></thead><tbody>`;
+          books.forEach(b => {
+            html += `<tr>
+              <td class="id-cell" onclick="copyAndFill('isbn','${esc(b.bookId)}')" title="クリックでISBNフィールドに設定">${esc(b.bookId)}</td>
+              <td>${esc(b.title)}</td>
+              <td>${esc(b.author)}</td>
+              <td>¥${Number(b.priceAmount).toLocaleString()}</td>
+            </tr>`;
+          });
+          html += '</tbody></table></div>';
+        }
+        html += '</div>';
+
+        html += `<div class="db-section"><h3>Reviews (${reviews.length})</h3>`;
+        if (reviews.length === 0) {
+          html += '<div class="empty-state">データなし</div>';
+        } else {
+          html += `<div class="db-table-wrap"><table class="db-table">
+            <thead><tr><th>reviewId</th><th>bookId</th><th>名前</th><th>評価</th><th>コメント</th></tr></thead><tbody>`;
+          reviews.forEach(r => {
+            html += `<tr>
+              <td class="id-cell" onclick="copyAndFill('reviewId','${esc(r.reviewId)}')" title="クリックでreviewIdフィールドに設定" style="font-size:11px">${esc(r.reviewId)}</td>
+              <td>${esc(r.bookId)}</td>
+              <td>${esc(r.name)}</td>
+              <td>${r.rating}</td>
+              <td class="truncate">${esc(r.comment || '')}</td>
+            </tr>`;
+          });
+          html += '</tbody></table></div>';
+        }
+        html += '</div>';
+
+        body.innerHTML = html;
+      } catch {
+        setDbStatus(false, banner, dot, statusText);
+        body.innerHTML = '<div class="empty-state">DBに接続できません</div>';
+      }
+    }
+
+    function setDbStatus(ok, banner, dot, statusText) {
+      if (ok) {
+        banner.classList.remove('visible');
+        dot.style.background = '#34c759';
+        statusText.textContent = 'DB: 接続済み';
+        statusText.style.color = '#34c759';
+      } else {
+        banner.classList.add('visible');
+        dot.style.background = '#ff3b30';
+        statusText.textContent = 'DB: 未接続';
+        statusText.style.color = '#ff3b30';
+      }
+    }
+
+    function copyAndFill(fieldName, value) {
+      navigator.clipboard.writeText(value).catch(() => {});
+      const el = document.getElementById(`field-${fieldName}`);
+      if (el) {
+        el.value = value;
+        const cfg = getCurrentConfig();
+        if (cfg) updateUrlPreview(cfg);
+      }
+      const toast = document.getElementById('copied-toast');
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 1800);
+    }
+
+    function esc(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    loadDbState();
+    setInterval(loadDbState, 10000);
+  </script>
+</body>
+</html>
