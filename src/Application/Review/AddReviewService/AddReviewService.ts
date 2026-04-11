@@ -1,0 +1,61 @@
+import { ITransactionManager } from "Application/shared/ITransactionManager";
+import { BookId } from "Domain/models/Book/BookId/BookId";
+import { IBookRepository } from "Domain/models/Book/IBookRepository";
+import { Comment } from "Domain/models/Review/Comment/Comment";
+import { IReviewRepository } from "Domain/models/Review/IReviewRepository";
+import { Name } from "Domain/models/Review/Name/Name";
+import { Rating } from "Domain/models/Review/Rating/Rating";
+import { Review } from "Domain/models/Review/Review";
+import { ReviewId } from "Domain/models/Review/ReviewId/ReviewId";
+import { ReviewIdentity } from "Domain/models/Review/ReviewIdentity/ReviewIdentity";
+import { AddReviewDTO } from "./AddReviewDTO";
+
+export type AddReviewCommand = {
+  bookId: string;
+  name: string;
+  rating: number;
+  comment?: string;
+};
+
+export class AddReviewService {
+  constructor(
+    private reviewRepository: IReviewRepository,
+    private bookRepository: IBookRepository,
+    private transactionManager: ITransactionManager,
+  ) {}
+
+  async execute(command: AddReviewCommand): Promise<AddReviewDTO> {
+    return await this.transactionManager.begin(async () => {
+      const bookId = new BookId(command.bookId);
+      const book = await this.bookRepository.findById(bookId);
+      if (!book) {
+        throw new Error(`Book with ID ${command.bookId} not found.`);
+      }
+
+      const name = new Name(command.name);
+      const rating = new Rating(command.rating);
+      const comment = command.comment
+        ? new Comment(command.comment)
+        : undefined;
+
+      const reviewIdentity = new ReviewIdentity(new ReviewId());
+      const review = Review.create(
+        reviewIdentity,
+        book.bookId,
+        name,
+        rating,
+        comment,
+      );
+
+      await this.reviewRepository.save(review);
+
+      return {
+        id: review.reviewId.value,
+        bookId: review.bookId.value,
+        name: review.name.value,
+        rating: review.rating.value,
+        comment: review.comment?.value,
+      };
+    });
+  }
+}

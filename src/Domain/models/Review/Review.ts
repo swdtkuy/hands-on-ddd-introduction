@@ -91,7 +91,7 @@ export class Review {
     this._rating = rating;
   }
 
-  editComment(comment: Comment): void {
+  editComment(comment: Comment | undefined): void {
     this._comment = comment;
   }
 }

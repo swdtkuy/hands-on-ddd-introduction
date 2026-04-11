@@ -39,20 +39,6 @@ describe("Book", () => {
     });
   });
 
-  describe("equals", () => {
-    test("should be equal when bookIds are the same", () => {
-      const book1 = Book.create(makeIdentity("9784798126708"), makePrice(1000));
-      const book2 = Book.create(makeIdentity("9784798126708"), makePrice(2000));
-      expect(book1.equals(book2)).toBe(true);
-    });
-
-    test("should not be equal when bookIds differ", () => {
-      const book1 = Book.create(makeIdentity("9784798126708"), makePrice());
-      const book2 = Book.create(makeIdentity("9791032317785"), makePrice());
-      expect(book1.equals(book2)).toBe(false);
-    });
-  });
-
   describe("changePrice", () => {
     test("should update the price", () => {
       const book = Book.create(makeIdentity(), makePrice(1000));

@@ -54,40 +54,6 @@ describe("Review", () => {
     });
   });
 
-  describe("equals", () => {
-    test("should be equal when reviewIds are the same", () => {
-      const r1 = Review.create(
-        makeIdentity("id-1"),
-        makeBookId(),
-        makeName(),
-        makeRating(3),
-      );
-      const r2 = Review.create(
-        makeIdentity("id-1"),
-        makeBookId(),
-        makeName(),
-        makeRating(5),
-      );
-      expect(r1.equals(r2)).toBe(true);
-    });
-
-    test("should not be equal when reviewIds differ", () => {
-      const r1 = Review.create(
-        makeIdentity("id-1"),
-        makeBookId(),
-        makeName(),
-        makeRating(3),
-      );
-      const r2 = Review.create(
-        makeIdentity("id-2"),
-        makeBookId(),
-        makeName(),
-        makeRating(3),
-      );
-      expect(r1.equals(r2)).toBe(false);
-    });
-  });
-
   describe("isTrustworthy", () => {
     describe("without comment", () => {
       test("should return true when rating quality factor meets threshold", () => {

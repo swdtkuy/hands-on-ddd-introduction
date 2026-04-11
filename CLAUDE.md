@@ -46,7 +46,15 @@ Code is organized into three layers under `src/`:
 
 ### Application (`src/Application/`)
 
+Application services accept a plain command/DTO object and call `execute()`. Each service takes repository and transaction manager dependencies via constructor injection.
+
+- **`Book/RegisterBookService/`** — Checks for duplicate ISBN, constructs the Book aggregate, persists it.
+- **`Review/AddReviewService/`** — Creates and persists a new Review for a Book.
+- **`Review/EditReviewService/`** — Updates rating/comment on an existing Review.
+- **`Review/DeleteReviewService/`** — Deletes a Review by id.
+- **`Review/GetRecommendedBooksService/`** — Delegates to `BookRecommendationDomainService` to rank recommended titles across all reviews for a book.
 - **`shared/ITransactionManager.ts`** — `begin<T>(callback)` interface for wrapping operations in a transaction.
+- **`shared/MockTransactionManager.ts`** — Test double that executes the callback directly (no real transaction); used in application service unit tests.
 
 ### Infrastructure (`src/Infrastructure/`)
 
