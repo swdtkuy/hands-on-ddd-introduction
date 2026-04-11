@@ -5,7 +5,7 @@ import { GetRecommendedBooksDTO } from "./GetRecommendedBooksDTO";
 
 export type GetRecommendedBooksCommand = {
   bookId: string;
-  maxCount: number;
+  maxCount?: number;
 };
 
 export class GetRecommendedBooksService {

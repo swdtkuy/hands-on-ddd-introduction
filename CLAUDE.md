@@ -35,7 +35,7 @@ npx ts-node src/Infrastructure/SQL/migrations/runMigrations.ts init.sql
 
 ## Architecture
 
-Code is organized into three layers under `src/`:
+Code is organized into four layers under `src/`:
 
 ### Domain (`src/Domain/`)
 
@@ -63,7 +63,11 @@ Application services accept a plain command/DTO object and call `execute()`. Eac
 - **`SQL/migrations/`** — `init.sql` creates the `Book` and `Review` tables (PostgreSQL); `runMigrations.ts` runs a named SQL file against the pool.
 - **`InMemory/`** — `InMemoryBookRepository` and `InMemoryReviewRepository` for use in unit tests.
 
-Path aliases are configured so imports use `Domain/...` and `Application/...` instead of relative paths.
+### Presentation (`src/Presentation/`)
+
+- **`Express/index.ts`** — Express 5 HTTP server on port 3000. Instantiates all SQL repositories and services directly (no DI container). Routes: `POST /book`, `POST /book/:isbn/review`, `PUT /review/:reviewId`, `DELETE /review/:reviewId`, `GET /book/:isbn/recommendations`. Start with `npx ts-node -r tsconfig-paths/register src/Presentation/Express/index.ts`.
+
+Path aliases are configured so imports use `Domain/...`, `Application/...`, and `Infrastructure/...` instead of relative paths.
 
 ## Database
 

@@ -10,8 +10,8 @@ import { ReviewIdentity } from "Domain/models/Review/ReviewIdentity/ReviewIdenti
 import { SQLClientManager } from "../SQLClientManager";
 
 type ReviewRow = {
-  identity: string;
-  book_id: string;
+  reviewId: string;
+  bookId: string;
   name: string;
   rating: number;
   comment: string | null;
@@ -23,8 +23,8 @@ export class SQLReviewRepository implements IReviewRepository {
   private toDomain(row: ReviewRow): Review {
     const comment = row.comment ? new Comment(row.comment) : undefined;
     return Review.reconstruct(
-      new ReviewIdentity(new ReviewId(row.identity)),
-      new BookId(row.book_id),
+      new ReviewIdentity(new ReviewId(row.reviewId)),
+      new BookId(row.bookId),
       new Name(row.name),
       new Rating(row.rating),
       comment,
