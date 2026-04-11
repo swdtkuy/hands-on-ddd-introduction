@@ -65,7 +65,8 @@ Application services accept a plain command/DTO object and call `execute()`. Eac
 
 ### Presentation (`src/Presentation/`)
 
-- **`Express/index.ts`** — Express 5 HTTP server on port 3000. Instantiates all SQL repositories and services directly (no DI container). Routes: `POST /book`, `POST /book/:isbn/review`, `PUT /review/:reviewId`, `DELETE /review/:reviewId`, `GET /book/:isbn/recommendations`. Start with `npx ts-node -r tsconfig-paths/register src/Presentation/Express/index.ts`.
+- **`Express/index.ts`** — Express 5 HTTP server on port 3000. Instantiates all SQL repositories and services directly (no DI container). Routes: `POST /book`, `POST /book/:isbn/review`, `PUT /review/:reviewId`, `DELETE /review/:reviewId`, `GET /book/:isbn/recommendations`, `GET /db/state` (returns current DB contents as JSON). Start with `npx ts-node -r tsconfig-paths/register src/Presentation/Express/index.ts`.
+- **`Express/public/index.html`** — Interactive web UI served at `http://localhost:3000`. Provides a request builder for all API endpoints and a live database state viewer.
 
 Path aliases are configured so imports use `Domain/...`, `Application/...`, and `Infrastructure/...` instead of relative paths.
 
