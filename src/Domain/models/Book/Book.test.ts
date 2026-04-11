@@ -1,9 +1,9 @@
 import { Author } from "./Author/Author";
+import { Book } from "./Book";
 import { BookId } from "./BookId/BookId";
 import { BookIdentity } from "./BookIdentity/BookIdentity";
 import { Price } from "./Price/Price";
 import { Title } from "./Title/Title";
-import { Book } from "./Book";
 
 const makeIdentity = (isbn = "9784798126708") =>
   new BookIdentity(

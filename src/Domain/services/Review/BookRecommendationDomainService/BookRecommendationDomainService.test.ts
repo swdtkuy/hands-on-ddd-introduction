@@ -1,14 +1,13 @@
-import { Review } from "Domain/models/Review/Review";
 import { BookId } from "Domain/models/Book/BookId/BookId";
 import { Comment } from "Domain/models/Review/Comment/Comment";
 import { Name } from "Domain/models/Review/Name/Name";
 import { Rating } from "Domain/models/Review/Rating/Rating";
+import { Review } from "Domain/models/Review/Review";
 import { ReviewId } from "Domain/models/Review/ReviewId/ReviewId";
 import { ReviewIdentity } from "Domain/models/Review/ReviewIdentity/ReviewIdentity";
 import { BookRecommendationDomainService } from "./BookRecommendationDomainService";
 
-const makeIdentity = (id: string) =>
-  new ReviewIdentity(new ReviewId(id));
+const makeIdentity = (id: string) => new ReviewIdentity(new ReviewId(id));
 
 const bookId = new BookId("1234567890");
 const name = new Name("テスト太郎");
@@ -18,11 +17,7 @@ const trustworthyRating = new Rating(4);
 // Rating 3 (qualityFactor=0.50) → not trustworthy without comment
 const untrustworthyRating = new Rating(3);
 
-const makeReview = (
-  id: string,
-  rating: Rating,
-  comment?: Comment,
-): Review =>
+const makeReview = (id: string, rating: Rating, comment?: Comment): Review =>
   Review.create(makeIdentity(id), bookId, name, rating, comment);
 
 // Comment that references a book title and contains a trigger word
@@ -45,7 +40,10 @@ describe("BookRecommendationDomainService", () => {
       const trustworthy = makeReview("r1", trustworthyRating);
       const untrustworthy = makeReview("r2", untrustworthyRating);
 
-      const result = service.getTrustworthyReviews([trustworthy, untrustworthy]);
+      const result = service.getTrustworthyReviews([
+        trustworthy,
+        untrustworthy,
+      ]);
 
       expect(result).toHaveLength(1);
       expect(result[0]).toBe(trustworthy);
@@ -76,16 +74,29 @@ describe("BookRecommendationDomainService", () => {
     });
 
     it("信頼できるレビューがない場合は空のリストを返す", () => {
-      const reviews = [makeReview("r1", untrustworthyRating, commentWithBook("DDD入門"))];
+      const reviews = [
+        makeReview("r1", untrustworthyRating, commentWithBook("DDD入門")),
+      ];
 
       expect(service.calculateTopRecommendedBooks(reviews)).toEqual([]);
     });
 
     it("信頼できるレビューからのみ書籍を抽出する", () => {
-      const trustworthy = makeReview("r1", trustworthyRating, commentWithBook("DDD入門"));
-      const untrustworthy = makeReview("r2", untrustworthyRating, commentWithBook("除外本"));
+      const trustworthy = makeReview(
+        "r1",
+        trustworthyRating,
+        commentWithBook("DDD入門"),
+      );
+      const untrustworthy = makeReview(
+        "r2",
+        untrustworthyRating,
+        commentWithBook("除外本"),
+      );
 
-      const result = service.calculateTopRecommendedBooks([trustworthy, untrustworthy]);
+      const result = service.calculateTopRecommendedBooks([
+        trustworthy,
+        untrustworthy,
+      ]);
 
       expect(result).toContain("DDD入門");
       expect(result).not.toContain("除外本");
@@ -135,7 +146,9 @@ describe("BookRecommendationDomainService", () => {
     });
 
     it("結果がmaxCount未満の場合は実際の件数を返す", () => {
-      const reviews = [makeReview("r1", trustworthyRating, commentWithBook("唯一本"))];
+      const reviews = [
+        makeReview("r1", trustworthyRating, commentWithBook("唯一本")),
+      ];
 
       expect(service.calculateTopRecommendedBooks(reviews, 5)).toHaveLength(1);
     });
@@ -143,7 +156,9 @@ describe("BookRecommendationDomainService", () => {
     it("コメントなしのレビューは書籍を抽出しない", () => {
       const reviewWithoutComment = makeReview("r1", trustworthyRating);
 
-      expect(service.calculateTopRecommendedBooks([reviewWithoutComment])).toEqual([]);
+      expect(
+        service.calculateTopRecommendedBooks([reviewWithoutComment]),
+      ).toEqual([]);
     });
   });
 });

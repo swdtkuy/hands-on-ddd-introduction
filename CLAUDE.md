@@ -25,21 +25,41 @@ npm run lint:fix
 # Format
 npm run format
 npm run format:check
+
+# Start local PostgreSQL
+docker compose up -d
+
+# Run DB migration
+npx ts-node src/Infrastructure/SQL/migrations/runMigrations.ts init.sql
 ```
 
 ## Architecture
 
-All code lives under `src/Domain/` and follows DDD patterns:
+Code is organized into three layers under `src/`:
+
+### Domain (`src/Domain/`)
 
 - **`shared/ValueObject.ts`** — Abstract base class for all value objects. Uses phantom types (`_type: U`) for compile-time type safety, lodash `isEqual` for deep equality, and enforces a `validate()` method on subclasses that throws on invalid input.
+- **`models/Book/`** — Book aggregate: `BookId` (ISBN-10/13), `Title`, `Author`, `Price` (JPY only, 1–1,000,000), `BookIdentity` (equality by bookId). `IBookRepository` defines `save` and `findById`.
+- **`models/Review/`** — Review aggregate: `ReviewId` (nanoid-generated), `Rating` (1–5 integer), `Comment` (1–1000 chars, exposes `getQualityFactor()`), `Name`, `ReviewIdentity` (equality by reviewId). `Review` aggregate root exposes `isTrustworthy()` and `extractRecommendedBooks()`. `IReviewRepository` defines `save`, `update`, `delete`, `findById`, and `findAllByBookId`.
+- **`services/`** — Stateless domain services for cross-aggregate logic. `BookRecommendationDomainService` filters trustworthy reviews and ranks recommended book titles by mention count.
 
-- **`models/Book/`** — Book aggregate value objects: `BookId` (ISBN-10/13), `Title`, `Author`, `Price` (JPY only, 1–1,000,000), and `BookIdentity` (aggregates them, equality by bookId).
+### Application (`src/Application/`)
 
-- **`models/Review/`** — Review aggregate value objects: `ReviewId` (nanoid-generated), `Rating` (1–5 integer), `Comment` (1–1000 chars, exposes `getQualityFactor()`), `Name`, and `ReviewIdentity` (aggregates them, equality by reviewId). `Review` aggregate root exposes `isTrustworthy()` and `extractRecommendedBooks()`.
+- **`shared/ITransactionManager.ts`** — `begin<T>(callback)` interface for wrapping operations in a transaction.
 
-- **`services/`** — Stateless domain services that coordinate logic across aggregates. `services/Review/BookRecommendationDomainService/` operates on `Review[]` to filter trustworthy reviews and rank recommended book titles by mention count.
+### Infrastructure (`src/Infrastructure/`)
 
-Path aliases are configured so imports use `Domain/...` instead of relative paths (e.g., `import { ValueObject } from "Domain/shared/ValueObject"`).
+- **`SQL/`** — PostgreSQL via `pg`. `SQLClientManager` uses `AsyncLocalStorage` to propagate a `PoolClient` through a call tree, enabling repositories to share a transaction-scoped client without explicit passing. `SQLTransactionManager` implements `ITransactionManager` on top of it.
+- **`SQL/Book/` and `SQL/Review/`** — `SQLBookRepository` and `SQLReviewRepository` implement the domain repository interfaces. Both use `SQLClientManager.withClient()`.
+- **`SQL/migrations/`** — `init.sql` creates the `Book` and `Review` tables (PostgreSQL); `runMigrations.ts` runs a named SQL file against the pool.
+- **`InMemory/`** — `InMemoryBookRepository` and `InMemoryReviewRepository` for use in unit tests.
+
+Path aliases are configured so imports use `Domain/...` and `Application/...` instead of relative paths.
+
+## Database
+
+`docker-compose.yaml` runs Postgres 15 on port 5432 with `localdb` / `postgres` / `password`. The same defaults are hardcoded in `src/Infrastructure/SQL/db.ts` and can be overridden via `DB_USER`, `DB_HOST`, `DB_NAME`, `DB_PASSWORD`, `DB_PORT` env vars.
 
 ## Aggregate Design Decisions
 
@@ -52,3 +72,5 @@ Path aliases are configured so imports use `Domain/...` instead of relative path
 Test files sit alongside source files (`*.test.ts`). Tests cover boundary values (MIN/MAX), error cases, and behavioral methods. Phantom type bypasses in tests use `as any` (allowed by ESLint config for test files).
 
 Do not duplicate tests for behavior already covered by the parent `ValueObject` class (e.g., `equals()`) in subclass test files.
+
+Infrastructure repository tests (`SQL/**/*.test.ts`) mock `pg` at the module level (`jest.mock("pg", ...)`) to prevent real DB connections and inject a mock `SQLClientManager` directly.
