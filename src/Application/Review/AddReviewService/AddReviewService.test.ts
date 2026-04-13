@@ -1,3 +1,4 @@
+import { container } from "tsyringe";
 import { Author } from "Domain/models/Book/Author/Author";
 import { Book } from "Domain/models/Book/Book";
 import { BookId } from "Domain/models/Book/BookId/BookId";
@@ -6,7 +7,6 @@ import { Price } from "Domain/models/Book/Price/Price";
 import { Title } from "Domain/models/Book/Title/Title";
 import { InMemoryBookRepository } from "Infrastructure/InMemory/Book/InMemoryBookRepository";
 import { InMemoryReviewRepository } from "Infrastructure/InMemory/Review/InMemoryReviewRepository";
-import { MockTransactionManager } from "Application/shared/MockTransactionManager";
 import { AddReviewService } from "./AddReviewService";
 
 const BOOK_ID = "1234567890";
@@ -27,13 +27,9 @@ describe("AddReviewService", () => {
   let service: AddReviewService;
 
   beforeEach(async () => {
-    reviewRepository = new InMemoryReviewRepository();
-    bookRepository = new InMemoryBookRepository();
-    service = new AddReviewService(
-      reviewRepository,
-      bookRepository,
-      new MockTransactionManager(),
-    );
+    service = container.resolve(AddReviewService);
+    reviewRepository = service["reviewRepository"] as InMemoryReviewRepository;
+    bookRepository = service["bookRepository"] as InMemoryBookRepository;
     await bookRepository.save(makeBook());
   });
 

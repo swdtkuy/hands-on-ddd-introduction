@@ -1,6 +1,7 @@
 import { BookId } from "Domain/models/Book/BookId/BookId";
 import { IReviewRepository } from "Domain/models/Review/IReviewRepository";
 import { BookRecommendationDomainService } from "Domain/services/Review/BookRecommendationDomainService/BookRecommendationDomainService";
+import { inject, injectable } from "tsyringe";
 import { GetRecommendedBooksDTO } from "./GetRecommendedBooksDTO";
 
 export type GetRecommendedBooksCommand = {
@@ -8,10 +9,13 @@ export type GetRecommendedBooksCommand = {
   maxCount?: number;
 };
 
+@injectable()
 export class GetRecommendedBooksService {
   private bookRecommendationService: BookRecommendationDomainService;
 
-  constructor(private reviewRepository: IReviewRepository) {
+  constructor(
+    @inject("IReviewRepository") private reviewRepository: IReviewRepository,
+  ) {
     this.bookRecommendationService = new BookRecommendationDomainService();
   }
 

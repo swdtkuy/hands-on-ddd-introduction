@@ -1,4 +1,4 @@
-import { MockTransactionManager } from "Application/shared/MockTransactionManager";
+import { container } from "tsyringe";
 import { BookId } from "Domain/models/Book/BookId/BookId";
 import { InMemoryBookRepository } from "Infrastructure/InMemory/Book/InMemoryBookRepository";
 import { RegisterBookService } from "./RegisterBookService";
@@ -13,8 +13,8 @@ describe("RegisterBookService", () => {
   let service: RegisterBookService;
 
   beforeEach(() => {
-    repository = new InMemoryBookRepository();
-    service = new RegisterBookService(repository, new MockTransactionManager());
+    service = container.resolve(RegisterBookService);
+    repository = service["bookRepository"] as InMemoryBookRepository;
   });
 
   it("有効なコマンドで書籍を登録できる", async () => {

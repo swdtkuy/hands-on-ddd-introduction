@@ -46,7 +46,7 @@ Code is organized into four layers under `src/`:
 
 ### Application (`src/Application/`)
 
-Application services accept a plain command/DTO object and call `execute()`. Each service takes repository and transaction manager dependencies via constructor injection.
+Application services accept a plain command/DTO object and call `execute()`. All application services are decorated with `@injectable()` and receive dependencies via `@inject("IBookRepository")` / `@inject("IReviewRepository")` / `@inject("ITransactionManager")` — resolved through the **tsyringe** DI container.
 
 - **`Book/RegisterBookService/`** — Checks for duplicate ISBN, constructs the Book aggregate, persists it.
 - **`Review/AddReviewService/`** — Creates and persists a new Review for a Book.
@@ -54,7 +54,7 @@ Application services accept a plain command/DTO object and call `execute()`. Eac
 - **`Review/DeleteReviewService/`** — Deletes a Review by id.
 - **`Review/GetRecommendedBooksService/`** — Delegates to `BookRecommendationDomainService` to rank recommended titles across all reviews for a book.
 - **`shared/ITransactionManager.ts`** — `begin<T>(callback)` interface for wrapping operations in a transaction.
-- **`shared/MockTransactionManager.ts`** — Test double that executes the callback directly (no real transaction); used in application service unit tests.
+- **`shared/MockTransactionManager.ts`** — Test double that executes the callback directly (no real transaction).
 
 ### Infrastructure (`src/Infrastructure/`)
 
@@ -65,10 +65,19 @@ Application services accept a plain command/DTO object and call `execute()`. Eac
 
 ### Presentation (`src/Presentation/`)
 
-- **`Express/index.ts`** — Express 5 HTTP server on port 3000. Instantiates all SQL repositories and services directly (no DI container). Routes: `POST /book`, `POST /book/:isbn/review`, `PUT /review/:reviewId`, `DELETE /review/:reviewId`, `GET /book/:isbn/recommendations`, `GET /db/state` (returns current DB contents as JSON). Start with `npx ts-node -r tsconfig-paths/register src/Presentation/Express/index.ts`.
+- **`Express/index.ts`** — Express 5 HTTP server on port 3000. Resolves services from the tsyringe container (bootstrapped by `src/Program.ts`). Routes: `POST /book`, `POST /book/:isbn/review`, `PUT /review/:reviewId`, `DELETE /review/:reviewId`, `GET /book/:isbn/recommendations`, `GET /db/state` (returns current DB contents as JSON). Start with `npx ts-node -r tsconfig-paths/register src/Presentation/Express/index.ts`.
 - **`Express/public/index.html`** — Interactive web UI served at `http://localhost:3000`. Provides a request builder for all API endpoints and a live database state viewer.
 
 Path aliases are configured so imports use `Domain/...`, `Application/...`, and `Infrastructure/...` instead of relative paths.
+
+## Dependency Injection
+
+**tsyringe** is the DI container. Two composition roots exist:
+
+- **`src/Program.ts`** — registers SQL implementations (production).
+- **`src/TestProgram.ts`** — registers in-memory repositories and `MockTransactionManager` (tests).
+
+`setupJest.ts` (loaded by Jest via `setupFilesAfterEnv`) imports `reflect-metadata` and `src/TestProgram.ts`, so the test container is always configured before any test runs. The Presentation layer bootstraps via `Program.ts`; `reflect-metadata` must be imported before any decorated class is instantiated.
 
 ## Database
 

@@ -8,6 +8,7 @@ import { Rating } from "Domain/models/Review/Rating/Rating";
 import { Review } from "Domain/models/Review/Review";
 import { ReviewId } from "Domain/models/Review/ReviewId/ReviewId";
 import { ReviewIdentity } from "Domain/models/Review/ReviewIdentity/ReviewIdentity";
+import { inject, injectable } from "tsyringe";
 import { AddReviewDTO } from "./AddReviewDTO";
 
 export type AddReviewCommand = {
@@ -17,10 +18,12 @@ export type AddReviewCommand = {
   comment?: string;
 };
 
+@injectable()
 export class AddReviewService {
   constructor(
-    private reviewRepository: IReviewRepository,
-    private bookRepository: IBookRepository,
+    @inject("IReviewRepository") private reviewRepository: IReviewRepository,
+    @inject("IBookRepository") private bookRepository: IBookRepository,
+    @inject("ITransactionManager")
     private transactionManager: ITransactionManager,
   ) {}
 

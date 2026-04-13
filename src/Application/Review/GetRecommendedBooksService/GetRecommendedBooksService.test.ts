@@ -1,3 +1,4 @@
+import { container } from "tsyringe";
 import { BookId } from "Domain/models/Book/BookId/BookId";
 import { Comment } from "Domain/models/Review/Comment/Comment";
 import { Name } from "Domain/models/Review/Name/Name";
@@ -37,8 +38,8 @@ describe("GetRecommendedBooksService", () => {
 
   beforeEach(() => {
     counter = 0;
-    repository = new InMemoryReviewRepository();
-    service = new GetRecommendedBooksService(repository);
+    service = container.resolve(GetRecommendedBooksService);
+    repository = service["reviewRepository"] as InMemoryReviewRepository;
   });
 
   it("レビューが存在しない場合、recommendedBooksは空のリストを返す", async () => {

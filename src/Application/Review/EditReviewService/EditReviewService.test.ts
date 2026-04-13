@@ -1,3 +1,4 @@
+import { container } from "tsyringe";
 import { BookId } from "Domain/models/Book/BookId/BookId";
 import { Comment } from "Domain/models/Review/Comment/Comment";
 import { Name } from "Domain/models/Review/Name/Name";
@@ -6,7 +7,6 @@ import { Review } from "Domain/models/Review/Review";
 import { ReviewId } from "Domain/models/Review/ReviewId/ReviewId";
 import { ReviewIdentity } from "Domain/models/Review/ReviewIdentity/ReviewIdentity";
 import { InMemoryReviewRepository } from "Infrastructure/InMemory/Review/InMemoryReviewRepository";
-import { MockTransactionManager } from "Application/shared/MockTransactionManager";
 import { EditReviewService } from "./EditReviewService";
 
 const BOOK_ID = "1234567890";
@@ -33,11 +33,8 @@ describe("EditReviewService", () => {
   let service: EditReviewService;
 
   beforeEach(async () => {
-    reviewRepository = new InMemoryReviewRepository();
-    service = new EditReviewService(
-      reviewRepository,
-      new MockTransactionManager(),
-    );
+    service = container.resolve(EditReviewService);
+    reviewRepository = service["reviewRepository"] as InMemoryReviewRepository;
     await reviewRepository.save(makeReview());
   });
 

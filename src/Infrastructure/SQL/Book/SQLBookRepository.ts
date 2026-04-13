@@ -5,6 +5,7 @@ import { BookIdentity } from "Domain/models/Book/BookIdentity/BookIdentity";
 import { IBookRepository } from "Domain/models/Book/IBookRepository";
 import { Price } from "Domain/models/Book/Price/Price";
 import { Title } from "Domain/models/Book/Title/Title";
+import { injectable } from "tsyringe";
 
 import { SQLClientManager } from "../SQLClientManager";
 
@@ -16,6 +17,7 @@ type BookRow = {
   priceCurrency: string;
 };
 
+@injectable()
 export class SQLBookRepository implements IBookRepository {
   constructor(private readonly clientManager: SQLClientManager) {}
 

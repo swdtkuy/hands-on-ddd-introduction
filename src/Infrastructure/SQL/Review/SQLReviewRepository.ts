@@ -6,6 +6,7 @@ import { Rating } from "Domain/models/Review/Rating/Rating";
 import { Review } from "Domain/models/Review/Review";
 import { ReviewId } from "Domain/models/Review/ReviewId/ReviewId";
 import { ReviewIdentity } from "Domain/models/Review/ReviewIdentity/ReviewIdentity";
+import { injectable } from "tsyringe";
 
 import { SQLClientManager } from "../SQLClientManager";
 
@@ -17,6 +18,7 @@ type ReviewRow = {
   comment: string | null;
 };
 
+@injectable()
 export class SQLReviewRepository implements IReviewRepository {
   constructor(private readonly clientManager: SQLClientManager) {}
 
