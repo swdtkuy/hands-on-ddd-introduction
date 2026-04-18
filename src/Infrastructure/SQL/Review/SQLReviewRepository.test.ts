@@ -38,18 +38,18 @@ const makeReview = ({
   );
 
 const makeRow = ({
-  identity = "review-abc",
-  book_id = BOOK_ID,
+  reviewId = "review-abc",
+  bookId = BOOK_ID,
   name = "山田 太郎",
   rating = 4,
   comment = null,
 }: {
-  identity?: string;
-  book_id?: string;
+  reviewId?: string;
+  bookId?: string;
   name?: string;
   rating?: number;
   comment?: string | null;
-} = {}) => ({ identity, book_id, name, rating, comment });
+} = {}) => ({ reviewId, bookId, name, rating, comment });
 
 describe("SQLReviewRepository", () => {
   let mockQuery: jest.Mock;
@@ -147,11 +147,11 @@ describe("SQLReviewRepository", () => {
       const row = makeRow();
       mockQuery.mockResolvedValue({ rows: [row] });
 
-      const result = await repository.findById(new ReviewId(row.identity));
+      const result = await repository.findById(new ReviewId(row.reviewId));
 
       expect(result).not.toBeNull();
-      expect(result!.reviewId.value).toBe(row.identity);
-      expect(result!.bookId.value).toBe(row.book_id);
+      expect(result!.reviewId.value).toBe(row.reviewId);
+      expect(result!.bookId.value).toBe(row.bookId);
       expect(result!.name.value).toBe(row.name);
       expect(result!.rating.value).toBe(row.rating);
       expect(result!.comment).toBeUndefined();
@@ -161,7 +161,7 @@ describe("SQLReviewRepository", () => {
       const row = makeRow({ comment: "面白かったです。" });
       mockQuery.mockResolvedValue({ rows: [row] });
 
-      const result = await repository.findById(new ReviewId(row.identity));
+      const result = await repository.findById(new ReviewId(row.reviewId));
 
       expect(result!.comment?.value).toBe("面白かったです。");
     });
@@ -189,8 +189,8 @@ describe("SQLReviewRepository", () => {
 
     test("should return all reviews mapped to domain objects", async () => {
       const rows = [
-        makeRow({ identity: "r1", rating: 5 }),
-        makeRow({ identity: "r2", rating: 3, comment: "まあまあです。" }),
+        makeRow({ reviewId: "r1", rating: 5 }),
+        makeRow({ reviewId: "r2", rating: 3, comment: "まあまあです。" }),
       ];
       mockQuery.mockResolvedValue({ rows });
 

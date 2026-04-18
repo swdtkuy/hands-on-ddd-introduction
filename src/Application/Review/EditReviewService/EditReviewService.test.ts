@@ -1,4 +1,4 @@
-import { container } from "tsyringe";
+import { MockDomainEventPublisher } from "Application/shared/DomainEvent/MockDomainEventPublisher";
 import { BookId } from "Domain/models/Book/BookId/BookId";
 import { Comment } from "Domain/models/Review/Comment/Comment";
 import { Name } from "Domain/models/Review/Name/Name";
@@ -7,6 +7,7 @@ import { Review } from "Domain/models/Review/Review";
 import { ReviewId } from "Domain/models/Review/ReviewId/ReviewId";
 import { ReviewIdentity } from "Domain/models/Review/ReviewIdentity/ReviewIdentity";
 import { InMemoryReviewRepository } from "Infrastructure/InMemory/Review/InMemoryReviewRepository";
+import { container } from "tsyringe";
 import { EditReviewService } from "./EditReviewService";
 
 const BOOK_ID = "1234567890";
@@ -30,11 +31,13 @@ const makeReview = (overrides?: {
 
 describe("EditReviewService", () => {
   let reviewRepository: InMemoryReviewRepository;
+  let domainEventPublisher: MockDomainEventPublisher;
   let service: EditReviewService;
 
   beforeEach(async () => {
     service = container.resolve(EditReviewService);
     reviewRepository = service["reviewRepository"] as InMemoryReviewRepository;
+    domainEventPublisher = service["domainEventPublisher"] as MockDomainEventPublisher;
     await reviewRepository.save(makeReview());
   });
 
@@ -119,5 +122,20 @@ describe("EditReviewService", () => {
         name: "レビュアー",
       }),
     ).rejects.toThrow("Review with ID non-existent-id not found.");
+  });
+
+  it("execute後に更新に対応するドメインイベントが発行される", async () => {
+    await service.execute({
+      reviewId: REVIEW_ID,
+      name: "新しいレビュアー",
+      rating: 5,
+      comment: "良い本です。",
+    });
+
+    const events = domainEventPublisher.getPublishedEvents();
+    const eventTypes = events.map((e) => e.eventType);
+    expect(eventTypes).toContain("ReviewNameUpdated");
+    expect(eventTypes).toContain("ReviewRatingUpdated");
+    expect(eventTypes).toContain("ReviewCommentEdited");
   });
 });

@@ -1,4 +1,4 @@
-import { container } from "tsyringe";
+import { MockDomainEventPublisher } from "Application/shared/DomainEvent/MockDomainEventPublisher";
 import { Author } from "Domain/models/Book/Author/Author";
 import { Book } from "Domain/models/Book/Book";
 import { BookId } from "Domain/models/Book/BookId/BookId";
@@ -7,6 +7,7 @@ import { Price } from "Domain/models/Book/Price/Price";
 import { Title } from "Domain/models/Book/Title/Title";
 import { InMemoryBookRepository } from "Infrastructure/InMemory/Book/InMemoryBookRepository";
 import { InMemoryReviewRepository } from "Infrastructure/InMemory/Review/InMemoryReviewRepository";
+import { container } from "tsyringe";
 import { AddReviewService } from "./AddReviewService";
 
 const BOOK_ID = "1234567890";
@@ -24,12 +25,16 @@ const makeBook = (bookId: string = BOOK_ID): Book =>
 describe("AddReviewService", () => {
   let reviewRepository: InMemoryReviewRepository;
   let bookRepository: InMemoryBookRepository;
+  let domainEventPublisher: MockDomainEventPublisher;
   let service: AddReviewService;
 
   beforeEach(async () => {
     service = container.resolve(AddReviewService);
     reviewRepository = service["reviewRepository"] as InMemoryReviewRepository;
     bookRepository = service["bookRepository"] as InMemoryBookRepository;
+    domainEventPublisher = service[
+      "domainEventPublisher"
+    ] as MockDomainEventPublisher;
     await bookRepository.save(makeBook());
   });
 
@@ -66,9 +71,7 @@ describe("AddReviewService", () => {
       rating: 3,
     });
 
-    const saved = await reviewRepository.findById(
-      { value: result.id } as any,
-    );
+    const saved = await reviewRepository.findById({ value: result.id } as any);
     expect(saved).not.toBeNull();
   });
 
@@ -80,5 +83,17 @@ describe("AddReviewService", () => {
         rating: 4,
       }),
     ).rejects.toThrow("Book with ID 0000000000 not found.");
+  });
+
+  it("execute後にReviewCreatedイベントが発行される", async () => {
+    await service.execute({
+      bookId: BOOK_ID,
+      name: "レビュアー",
+      rating: 4,
+    });
+
+    const events = domainEventPublisher.getPublishedEvents();
+    expect(events).toHaveLength(1);
+    expect(events[0].eventType).toBe("ReviewCreated");
   });
 });

@@ -1,3 +1,8 @@
+import { Aggregate } from "Domain/shared/Aggregate";
+import {
+  ReviewDomainEvent,
+  ReviewEventFactory,
+} from "Domain/shared/DomainEvent/Review/ReviewDomainEventFactory";
 import { BookId } from "../Book/BookId/BookId";
 import { Comment } from "./Comment/Comment";
 import { Name } from "./Name/Name";
@@ -5,14 +10,16 @@ import { Rating } from "./Rating/Rating";
 import { ReviewId } from "./ReviewId/ReviewId";
 import { ReviewIdentity } from "./ReviewIdentity/ReviewIdentity";
 
-export class Review {
+export class Review extends Aggregate<ReviewDomainEvent> {
   private constructor(
     private readonly _identity: ReviewIdentity,
     private readonly _bookId: BookId,
     private _name: Name,
     private _rating: Rating,
     private _comment?: Comment,
-  ) {}
+  ) {
+    super();
+  }
 
   static create(
     identity: ReviewIdentity,
@@ -21,7 +28,17 @@ export class Review {
     rating: Rating,
     comment?: Comment,
   ): Review {
-    return new Review(identity, bookId, name, rating, comment);
+    const review = new Review(identity, bookId, name, rating, comment);
+
+    const event = ReviewEventFactory.createReviewCreated(
+      identity.reviewId,
+      bookId,
+      name,
+      rating,
+      comment,
+    );
+    review.addDomainEvent(event);
+    return review;
   }
 
   static reconstruct(
@@ -84,14 +101,36 @@ export class Review {
   }
 
   updateName(name: Name): void {
+    const event = ReviewEventFactory.createReviewNameUpdated(
+      this._identity.reviewId,
+      name,
+    );
+    this.addDomainEvent(event);
     this._name = name;
   }
 
   updateRating(rating: Rating): void {
+    const event = ReviewEventFactory.createReviewRatingUpdated(
+      this._identity.reviewId,
+      rating,
+    );
+    this.addDomainEvent(event);
     this._rating = rating;
   }
 
   editComment(comment: Comment | undefined): void {
+    const event = ReviewEventFactory.createReviewCommentEdited(
+      this._identity.reviewId,
+      comment,
+    );
+    this.addDomainEvent(event);
     this._comment = comment;
+  }
+
+  delete(): void {
+    const event = ReviewEventFactory.createReviewDeleted(
+      this._identity.reviewId,
+    );
+    this.addDomainEvent(event);
   }
 }

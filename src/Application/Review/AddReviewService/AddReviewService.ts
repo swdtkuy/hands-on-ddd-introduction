@@ -1,3 +1,4 @@
+import { IDomainEventPublisher } from "Application/shared/DomainEvent/IDomainEventPublisher";
 import { ITransactionManager } from "Application/shared/ITransactionManager";
 import { BookId } from "Domain/models/Book/BookId/BookId";
 import { IBookRepository } from "Domain/models/Book/IBookRepository";
@@ -25,23 +26,25 @@ export class AddReviewService {
     @inject("IBookRepository") private bookRepository: IBookRepository,
     @inject("ITransactionManager")
     private transactionManager: ITransactionManager,
+    @inject("IDomainEventPublisher")
+    private domainEventPublisher: IDomainEventPublisher,
   ) {}
 
   async execute(command: AddReviewCommand): Promise<AddReviewDTO> {
-    return await this.transactionManager.begin(async () => {
-      const bookId = new BookId(command.bookId);
-      const book = await this.bookRepository.findById(bookId);
-      if (!book) {
-        throw new Error(`Book with ID ${command.bookId} not found.`);
-      }
+    const book = await this.bookRepository.findById(new BookId(command.bookId));
+    if (!book) {
+      throw new Error(`Book with ID ${command.bookId} not found.`);
+    }
 
+    const review = await this.transactionManager.begin(async () => {
+      const reviewId = new ReviewId();
+      const reviewIdentity = new ReviewIdentity(reviewId);
       const name = new Name(command.name);
       const rating = new Rating(command.rating);
       const comment = command.comment
         ? new Comment(command.comment)
         : undefined;
 
-      const reviewIdentity = new ReviewIdentity(new ReviewId());
       const review = Review.create(
         reviewIdentity,
         book.bookId,
@@ -52,13 +55,20 @@ export class AddReviewService {
 
       await this.reviewRepository.save(review);
 
-      return {
-        id: review.reviewId.value,
-        bookId: review.bookId.value,
-        name: review.name.value,
-        rating: review.rating.value,
-        comment: review.comment?.value,
-      };
+      return review;
     });
+
+    const events = review.getDomainEvents();
+    events.forEach((event) => this.domainEventPublisher.publish(event));
+
+    review.clearDomainEvents();
+
+    return {
+      id: review.reviewId.value,
+      bookId: review.bookId.value,
+      name: review.name.value,
+      rating: review.rating.value,
+      comment: review.comment?.value,
+    };
   }
 }

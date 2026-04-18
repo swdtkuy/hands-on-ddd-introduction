@@ -41,7 +41,10 @@ Code is organized into four layers under `src/`:
 
 - **`shared/ValueObject.ts`** — Abstract base class for all value objects. Uses phantom types (`_type: U`) for compile-time type safety, lodash `isEqual` for deep equality, and enforces a `validate()` method on subclasses that throws on invalid input.
 - **`models/Book/`** — Book aggregate: `BookId` (ISBN-10/13), `Title`, `Author`, `Price` (JPY only, 1–1,000,000), `BookIdentity` (equality by bookId). `IBookRepository` defines `save` and `findById`.
-- **`models/Review/`** — Review aggregate: `ReviewId` (nanoid-generated), `Rating` (1–5 integer), `Comment` (1–1000 chars, exposes `getQualityFactor()`), `Name`, `ReviewIdentity` (equality by reviewId). `Review` aggregate root exposes `isTrustworthy()` and `extractRecommendedBooks()`. `IReviewRepository` defines `save`, `update`, `delete`, `findById`, and `findAllByBookId`.
+- **`models/Review/`** — Review aggregate: `ReviewId` (nanoid-generated), `Rating` (1–5 integer), `Comment` (1–1000 chars, exposes `getQualityFactor()`), `Name`, `ReviewIdentity` (equality by reviewId). `Review` extends `Aggregate<ReviewDomainEvent>` and exposes `isTrustworthy()` and `extractRecommendedBooks()`. Mutations (`updateName`, `updateRating`, `editComment`, `delete`) each record a domain event via `addDomainEvent()`. `IReviewRepository` defines `save`, `update`, `delete`, `findById`, and `findAllByBookId`.
+- **`shared/Aggregate.ts`** — Abstract base class for aggregate roots. Holds a `domainEvents` list; subclasses call `addDomainEvent()` on mutations and application services drain it after persistence.
+- **`shared/DomainEvent/DomainEvent.ts`** — Generic event class parameterized on `Type` (string literal) and `Body` (record). Carries `eventId` (nanoid), `aggregateId`, `aggregateType`, `eventType`, `eventBody`, and `occurredAt`. Use `DomainEvent.create()` for new events, `DomainEvent.reconstruct()` for rehydration.
+- **`shared/DomainEvent/Review/ReviewDomainEventFactory.ts`** — Typed factory for all Review events (`ReviewCreated`, `ReviewNameUpdated`, `ReviewRatingUpdated`, `ReviewCommentEdited`, `ReviewDeleted`). New aggregate event types follow this pattern.
 - **`services/`** — Stateless domain services for cross-aggregate logic. `BookRecommendationDomainService` filters trustworthy reviews and ranks recommended book titles by mention count.
 
 ### Application (`src/Application/`)
@@ -55,6 +58,10 @@ Application services accept a plain command/DTO object and call `execute()`. All
 - **`Review/GetRecommendedBooksService/`** — Delegates to `BookRecommendationDomainService` to rank recommended titles across all reviews for a book.
 - **`shared/ITransactionManager.ts`** — `begin<T>(callback)` interface for wrapping operations in a transaction.
 - **`shared/MockTransactionManager.ts`** — Test double that executes the callback directly (no real transaction).
+- **`shared/DomainEvent/IDomainEventPublisher.ts`** — `publish(event)` interface; injected as `"IDomainEventPublisher"`.
+- **`shared/DomainEvent/IDomainEventSubscriber.ts`** — `subscribe(channel, handler)` interface; injected as `"IDomainEventSubscriber"`.
+- **`shared/DomainEvent/MockDomainEventPublisher.ts`** — Test double that accumulates events; exposes `getPublishedEvents()` for assertions.
+- **`DomainEventHandlers/CatalogServiceEventHandler.ts`** — Subscribes to the `"CatalogService"` channel and dispatches incoming events by `eventType`. Register it at startup by calling `handler.register()`.
 
 ### Infrastructure (`src/Infrastructure/`)
 
@@ -62,6 +69,7 @@ Application services accept a plain command/DTO object and call `execute()`. All
 - **`SQL/Book/` and `SQL/Review/`** — `SQLBookRepository` and `SQLReviewRepository` implement the domain repository interfaces. Both use `SQLClientManager.withClient()`.
 - **`SQL/migrations/`** — `init.sql` creates the `Book` and `Review` tables (PostgreSQL); `runMigrations.ts` runs a named SQL file against the pool.
 - **`InMemory/`** — `InMemoryBookRepository` and `InMemoryReviewRepository` for use in unit tests.
+- **`EventEmitter/`** — Node.js `EventEmitter`-backed domain event bus. `EventEmitterClient` is a singleton emitter. `EventEmitterDomainEventPublisher` emits to the `"CatalogService"` channel. `EventEmitterDomainEventSubscriber` wraps `emitter.on()`.
 
 ### Presentation (`src/Presentation/`)
 
@@ -74,8 +82,8 @@ Path aliases are configured so imports use `Domain/...`, `Application/...`, and 
 
 **tsyringe** is the DI container. Two composition roots exist:
 
-- **`src/Program.ts`** — registers SQL implementations (production).
-- **`src/TestProgram.ts`** — registers in-memory repositories and `MockTransactionManager` (tests).
+- **`src/Program.ts`** — registers SQL implementations and `EventEmitter`-backed publisher/subscriber (production).
+- **`src/TestProgram.ts`** — registers in-memory repositories, `MockTransactionManager`, and `MockDomainEventPublisher` (tests). No `IDomainEventSubscriber` is registered in tests; handlers are not wired.
 
 `setupJest.ts` (loaded by Jest via `setupFilesAfterEnv`) imports `reflect-metadata` and `src/TestProgram.ts`, so the test container is always configured before any test runs. The Presentation layer bootstraps via `Program.ts`; `reflect-metadata` must be imported before any decorated class is instantiated.
 
@@ -85,8 +93,9 @@ Path aliases are configured so imports use `Domain/...`, `Application/...`, and 
 
 ## Aggregate Design Decisions
 
-- **Book**: identity by `BookId` (ISBN). `Book.create()` for new instances, `Book.reconstruct()` for loading from persistence. `changePrice()` is the only mutation.
-- **Review**: references `BookId` but does not own the Book aggregate. `isTrustworthy(threshold)` weights rating (70%) and comment quality (30%) when a comment is present. `extractRecommendedBooks()` uses a Japanese-text regex to pull book titles from comments.
+- **Book**: identity by `BookId` (ISBN). `Book.create()` for new instances, `Book.reconstruct()` for loading from persistence. `changePrice()` is the only mutation. Book does not yet extend `Aggregate`; only Review emits domain events.
+- **Review**: references `BookId` but does not own the Book aggregate. `isTrustworthy(threshold)` weights rating (70%) and comment quality (30%) when a comment is present. `extractRecommendedBooks()` uses a Japanese-text regex to pull book titles from comments. Each mutation records a domain event; application services publish accumulated events after persisting the aggregate.
+- **Domain events**: application services drain `aggregate.getDomainEvents()` after persistence and call `publisher.publish()` per event, then `aggregate.clearDomainEvents()`. Events are delivered in-process via Node.js `EventEmitter` (not durable).
 - **Cross-aggregate logic** belongs in domain services, not aggregates.
 
 ## Testing Conventions

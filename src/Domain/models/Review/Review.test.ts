@@ -52,6 +52,29 @@ describe("Review", () => {
       );
       expect(review.reviewId).toBe(identity.reviewId);
     });
+
+    test("create should add a ReviewCreated domain event", () => {
+      const review = Review.create(
+        makeIdentity(),
+        makeBookId(),
+        makeName(),
+        makeRating(4),
+        makeComment("面白かった"),
+      );
+      const events = review.getDomainEvents();
+      expect(events).toHaveLength(1);
+      expect(events[0].eventType).toBe("ReviewCreated");
+    });
+
+    test("reconstruct should not add any domain events", () => {
+      const review = Review.reconstruct(
+        makeIdentity(),
+        makeBookId(),
+        makeName(),
+        makeRating(4),
+      );
+      expect(review.getDomainEvents()).toHaveLength(0);
+    });
   });
 
   describe("isTrustworthy", () => {
@@ -201,6 +224,46 @@ describe("Review", () => {
       const newComment = makeComment("編集後のコメント");
       review.editComment(newComment);
       expect(review.comment).toBe(newComment);
+    });
+  });
+
+  describe("domain events", () => {
+    test("updateName should add a ReviewNameUpdated event", () => {
+      const review = Review.reconstruct(makeIdentity(), makeBookId(), makeName(), makeRating(3));
+      review.updateName(makeName("新名前"));
+      const events = review.getDomainEvents();
+      expect(events).toHaveLength(1);
+      expect(events[0].eventType).toBe("ReviewNameUpdated");
+    });
+
+    test("updateRating should add a ReviewRatingUpdated event", () => {
+      const review = Review.reconstruct(makeIdentity(), makeBookId(), makeName(), makeRating(3));
+      review.updateRating(makeRating(5));
+      const events = review.getDomainEvents();
+      expect(events).toHaveLength(1);
+      expect(events[0].eventType).toBe("ReviewRatingUpdated");
+    });
+
+    test("editComment should add a ReviewCommentEdited event", () => {
+      const review = Review.reconstruct(makeIdentity(), makeBookId(), makeName(), makeRating(3));
+      review.editComment(makeComment("新コメント"));
+      const events = review.getDomainEvents();
+      expect(events).toHaveLength(1);
+      expect(events[0].eventType).toBe("ReviewCommentEdited");
+    });
+
+    test("delete should add a ReviewDeleted event", () => {
+      const review = Review.reconstruct(makeIdentity(), makeBookId(), makeName(), makeRating(3));
+      review.delete();
+      const events = review.getDomainEvents();
+      expect(events).toHaveLength(1);
+      expect(events[0].eventType).toBe("ReviewDeleted");
+    });
+
+    test("clearDomainEvents should remove all events", () => {
+      const review = Review.create(makeIdentity(), makeBookId(), makeName(), makeRating(3));
+      review.clearDomainEvents();
+      expect(review.getDomainEvents()).toHaveLength(0);
     });
   });
 });

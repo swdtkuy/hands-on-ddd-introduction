@@ -1,4 +1,4 @@
-import { container } from "tsyringe";
+import { MockDomainEventPublisher } from "Application/shared/DomainEvent/MockDomainEventPublisher";
 import { BookId } from "Domain/models/Book/BookId/BookId";
 import { Name } from "Domain/models/Review/Name/Name";
 import { Rating } from "Domain/models/Review/Rating/Rating";
@@ -6,6 +6,7 @@ import { Review } from "Domain/models/Review/Review";
 import { ReviewId } from "Domain/models/Review/ReviewId/ReviewId";
 import { ReviewIdentity } from "Domain/models/Review/ReviewIdentity/ReviewIdentity";
 import { InMemoryReviewRepository } from "Infrastructure/InMemory/Review/InMemoryReviewRepository";
+import { container } from "tsyringe";
 import { DeleteReviewService } from "./DeleteReviewService";
 
 const BOOK_ID = "1234567890";
@@ -21,11 +22,13 @@ const makeReview = (reviewId = REVIEW_ID): Review =>
 
 describe("DeleteReviewService", () => {
   let reviewRepository: InMemoryReviewRepository;
+  let domainEventPublisher: MockDomainEventPublisher;
   let service: DeleteReviewService;
 
   beforeEach(async () => {
     service = container.resolve(DeleteReviewService);
     reviewRepository = service["reviewRepository"] as InMemoryReviewRepository;
+    domainEventPublisher = service["domainEventPublisher"] as MockDomainEventPublisher;
     await reviewRepository.save(makeReview());
   });
 
@@ -55,5 +58,13 @@ describe("DeleteReviewService", () => {
     await expect(
       service.execute({ reviewId: "non-existent-id" }),
     ).rejects.toThrow("Review with ID non-existent-id not found.");
+  });
+
+  it("execute後にReviewDeletedイベントが発行される", async () => {
+    await service.execute({ reviewId: REVIEW_ID });
+
+    const events = domainEventPublisher.getPublishedEvents();
+    expect(events).toHaveLength(1);
+    expect(events[0].eventType).toBe("ReviewDeleted");
   });
 });

@@ -8,6 +8,7 @@ import {
   RegisterBookCommand,
   RegisterBookService,
 } from "Application/Book/RegisterBookService/RegisterBookService";
+import { CatalogServiceEventHandler } from "Application/DomainEventHandlers/CatalogServiceEventHandler";
 import {
   AddReviewCommand,
   AddReviewService,
@@ -160,4 +161,6 @@ app.delete("/review/:reviewId", async (req, res) => {
 
 app.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);
+
+  container.resolve(CatalogServiceEventHandler).register();
 });

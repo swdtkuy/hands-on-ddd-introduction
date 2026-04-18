@@ -1,0 +1,8 @@
+import { IDomainEventSubscriber } from "Application/shared/DomainEvent/IDomainEventSubscriber";
+import { eventEmitterClient } from "./EventEmitterClient";
+
+export class EventEmitterDomainEventSubscriber implements IDomainEventSubscriber {
+  subscribe(topic: string, callback: (event: Record<string, unknown>) => void) {
+    eventEmitterClient.on(topic, callback);
+  }
+}
