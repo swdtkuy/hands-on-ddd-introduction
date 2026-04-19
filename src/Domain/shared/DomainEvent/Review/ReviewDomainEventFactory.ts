@@ -1,3 +1,5 @@
+// ファクトリを利用してドメインイベントの生成を一元化
+// 集約のコードがすっきりする
 import { BookId } from "Domain/models/Book/BookId/BookId";
 import { Comment } from "Domain/models/Review/Comment/Comment";
 import { Name } from "Domain/models/Review/Name/Name";

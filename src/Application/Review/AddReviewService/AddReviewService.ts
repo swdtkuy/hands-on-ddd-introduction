@@ -1,3 +1,4 @@
+// ドメインイベントの発行を追加
 import { IDomainEventPublisher } from "Application/shared/DomainEvent/IDomainEventPublisher";
 import { ITransactionManager } from "Application/shared/ITransactionManager";
 import { BookId } from "Domain/models/Book/BookId/BookId";
@@ -26,6 +27,7 @@ export class AddReviewService {
     @inject("IBookRepository") private bookRepository: IBookRepository,
     @inject("ITransactionManager")
     private transactionManager: ITransactionManager,
+    // ドメインイベントの発行を追加
     @inject("IDomainEventPublisher")
     private domainEventPublisher: IDomainEventPublisher,
   ) {}
@@ -45,6 +47,7 @@ export class AddReviewService {
         ? new Comment(command.comment)
         : undefined;
 
+      // ドメインイベントを作成
       const review = Review.create(
         reviewIdentity,
         book.bookId,
@@ -58,6 +61,7 @@ export class AddReviewService {
       return review;
     });
 
+    // ドメインイベントの発行
     const events = review.getDomainEvents();
     events.forEach((event) => this.domainEventPublisher.publish(event));
 
