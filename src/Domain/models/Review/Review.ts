@@ -10,6 +10,7 @@ import { Rating } from "./Rating/Rating";
 import { ReviewId } from "./ReviewId/ReviewId";
 import { ReviewIdentity } from "./ReviewIdentity/ReviewIdentity";
 
+// Aggregate を継承
 export class Review extends Aggregate<ReviewDomainEvent> {
   private constructor(
     private readonly _identity: ReviewIdentity,
@@ -30,6 +31,7 @@ export class Review extends Aggregate<ReviewDomainEvent> {
   ): Review {
     const review = new Review(identity, bookId, name, rating, comment);
 
+    // ドメインイベントを作成
     const event = ReviewEventFactory.createReviewCreated(
       identity.reviewId,
       bookId,
